@@ -1,0 +1,31 @@
+{
+  "name": "noxcloud-server",
+  "version": "1.0.0",
+  "description": "NoxCloud IDE server",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/morwoen/NoxCloudIDE.git"
+  },
+  "keywords": [
+    "IDE",
+    "cloud"
+  ],
+  "author": "Georgi Tsaklev",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/morwoen/NoxCloudIDE/issues"
+  },
+  "homepage": "https://github.com/morwoen/NoxCloudIDE#readme",
+  "dependencies": {
+    "chalk": "^1.1.3",
+    "express": "^4.14.0",
+    "flags": "^0.1.3",
+    "lodash": "^4.15.0",
+    "node-watch": "^0.4.0",
+    "socket.io": "^1.4.8"
+  }
+}

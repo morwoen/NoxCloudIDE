@@ -1,0 +1,12 @@
+body {
+  margin: 0;
+}
+
+.bg-1 {
+  background-color: #2B2B2B;
+}
+
+.accent {
+  color: #0CBA46;
+  border-color: #0CBA46;
+}

@@ -1,0 +1,1 @@
+http://stackoverflow.com/questions/3734932/max-open-files-for-working-process
