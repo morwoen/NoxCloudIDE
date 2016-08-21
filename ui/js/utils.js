@@ -1,12 +1,17 @@
 import Socket from './socket';
 import _ from 'lodash';
+import ajax from 'client-ajax';
+import path from 'path';
+import DMP from 'diff-match-patch';
+
+const dmp = new DMP();
 
 const utils = {
   restoreFileExplorer: function(dispatch) {
     const previousState = JSON.parse(window.localStorage.getItem('openPath'));
     
     const fetchDirectoryAndCheckForMore = (dirPath) => {
-      Socket.emit('dir', dirPath, function(dir) {
+      Socket.fs.emit('dir', dirPath, function(dir) {
         dispatch({
           type: 'dir',
           folder: dirPath,
@@ -22,7 +27,7 @@ const utils = {
       });
     };
     
-    Socket.emit('root', function(root) {
+    Socket.fs.emit('root', function(root) {
       dispatch({
         type: 'root',
         root: root
@@ -31,9 +36,9 @@ const utils = {
       fetchDirectoryAndCheckForMore('');
     });
     
-    Socket.on('change', (data) => {
+    Socket.fs.on('change', (data) => {
       const folder = data.split('/').pop().join('/');
-      Socket.emit('dir', folder, function(dir) {
+      Socket.fs.emit('dir', folder, function(dir) {
       dispatch({
         type: 'dir',
         folder: folder,
@@ -81,6 +86,25 @@ const utils = {
       current.contents = action.contents;
     }
     return newState;
+  },
+  
+  fetchFile: function(p) {
+    return ajax({
+      url: path.join('/file/', p),
+      method: 'get',
+      body: true,
+      type: 'text'
+    });
+  },
+  
+  saveFile: function(p, diffs) {
+    return ajax({
+      url: path.join('/file/', p),
+      method: 'post',
+      data: { patches: dmp.patch_toText(dmp.patch_make(diffs)) },
+      format: 'json',
+      origin: true
+    });
   }
 };
 

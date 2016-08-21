@@ -4,6 +4,29 @@ var path = require("path");
 var CopyWebpackPlugin = require('copy-webpack-plugin');
 var contextPath = path.join(__dirname);
 
+var copyPlugins = [
+  new CopyWebpackPlugin([{
+    from: 'node_modules/monaco-editor/min/vs',
+    to: 'vs',
+  }]),
+  new CopyWebpackPlugin([{
+    from: 'node_modules/xterm/src/xterm.js',
+    to: 'xterm/xterm.js',
+  }]),
+  new CopyWebpackPlugin([{
+    from: 'node_modules/xterm/src/xterm.css',
+    to: 'xterm/xterm.css',
+  }]),
+  new CopyWebpackPlugin([{
+    from: 'node_modules/xterm/addons/fit/fit.js',
+    to: 'xterm/addons/fit/fit.js',
+  }]),
+  new CopyWebpackPlugin([{
+    from: 'node_modules/xterm/addons/linkify/linkify.js',
+    to: 'xterm/addons/linkify/linkify.js',
+  }])
+];
+
 module.exports = {
   context: contextPath,
   devtool: debug ? "inline-sourcemap" : null,
@@ -30,21 +53,12 @@ module.exports = {
     filename: "app.min.js",
     publicPath: "/"
   },
-  plugins: debug ? [
-    new CopyWebpackPlugin([{
-      from: 'node_modules/monaco-editor/dev/vs',
-      to: 'vs',
-    }]),
-  ] : [
+  plugins: debug ? copyPlugins : copyPlugins.concat([
     new webpack.DefinePlugin({
       "process.env": {
         "NODE_ENV": '"production"'
       }
     }),
-    new CopyWebpackPlugin([{
-      from: 'node_modules/monaco-editor/min/vs',
-      to: 'vs',
-    }]),
     new webpack.optimize.DedupePlugin(),
     new webpack.optimize.OccurenceOrderPlugin(),
     new webpack.optimize.UglifyJsPlugin({
@@ -57,7 +71,7 @@ module.exports = {
         comments: false
       }
     }),
-  ],
+  ]),
   "devServer": {
     proxy: {
       "/api/*": { target: "http://localhost:8081" },

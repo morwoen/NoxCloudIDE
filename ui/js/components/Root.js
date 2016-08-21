@@ -33,7 +33,7 @@ export default class Root extends React.Component {
     return {
       resize: {
         observable: source,
-        notify: function() {
+        notify: () => {
           source.onNext('resize');
         }
       }
@@ -41,8 +41,9 @@ export default class Root extends React.Component {
   }
   
   componentDidMount() {
-    Socket.connect();
+    Socket.fs.connect();
     utils.restoreFileExplorer(store.dispatch.bind(store));
+    window.addEventListener('resize', () => source.onNext('resize'));
   }
   
   componentWillUnmount() {

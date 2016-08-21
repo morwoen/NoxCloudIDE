@@ -1,16 +1,21 @@
 import React from 'react';
 import { connect } from 'react-redux';
 import Socket from '../socket';
+import utils from '../utils';
 
-export default class File extends React.Component {
+let ConnectedFile;
+
+class File extends React.Component {
   render() {
     let contents = (this.props.file.contents || []).map((f) => {
-      return (<File key={f.filename} file={f} path={`${this.props.path}/${f.filename}`} dispatch={this.props.dispatch} />);
+      return (<ConnectedFile key={f.filename} file={f} path={`${this.props.path}/${f.filename}`} dispatch={this.props.dispatch} />);
     });
+    
+    const color = this.props.path === (this.props.openedFiles && this.props.openedFiles[1]) ? '#0CBA46' : 'white';
     
     return (
       <div>
-        <div style={{ color: 'white', cursor: 'pointer' }} onTouchTap={() => {
+        <div style={{ color: color, cursor: 'pointer' }} onTouchTap={() => {
           if (this.props.file.isDirectory) {
             if (this.props.file.contents) {
               this.props.dispatch({
@@ -18,7 +23,7 @@ export default class File extends React.Component {
                 folder: this.props.path
               });
             } else {
-              Socket.emit('dir', this.props.path, (dir) => {
+              Socket.fs.emit('dir', this.props.path, (dir) => {
                 this.props.dispatch({
                   type: 'dir',
                   folder: this.props.path,
@@ -27,7 +32,29 @@ export default class File extends React.Component {
               });  
             }
           } else {
-            // TODO: Implement file opening
+            // Open file
+            this.props.dispatch((dispatch, getState) => {
+              const fileStore = getState().fileStore;
+              
+              dispatch({
+                type: 'openFile',
+                path: this.props.path
+              });
+              
+              if (fileStore[this.props.path]) {
+                // TODO implement refetch & merge / ask for replace if changed
+                
+              } else {
+                utils.fetchFile(this.props.path)
+                .then((file) => {
+                  dispatch({
+                    type: 'loadFile',
+                    path: this.props.path,
+                    file
+                  });
+                });
+              }
+            });
           }
         }}>
           {this.props.file.isDirectory ? 
@@ -44,4 +71,11 @@ export default class File extends React.Component {
   }
 }
 
-//export default connect()(File);
+ConnectedFile = connect((state) => {
+  return {
+    openedFiles: state.openedFiles,
+    files: state.files
+  };
+})(File);
+
+export default ConnectedFile;
