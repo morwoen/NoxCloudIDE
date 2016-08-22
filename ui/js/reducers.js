@@ -64,10 +64,59 @@ function openedFiles(state = {}, action) {
   }
 }
 
+// lastTouched should store the path to the last touched editor/image (not terminal)'s tabs component
+// lastTouchedIndex should store the index to the last touched tab
+//
+// spit { type: vertical/horizontal, 0: left/top, 1: right/bottom }
+// tabs { type: tabs, tabs: [] }
+let nextId = 1;
+let lastTouched = '';
+let lastTouchedIndex = 0;
+function view(state = {}, action) {
+  switch(action.type) {
+    case 'init':
+      return {
+        [nextId++]: {
+          type: 'horizontal',
+          views: {
+            [nextId++]: {
+              type: 'editor',
+              path: ''
+            },
+            [nextId++]: {
+              type: 'terminal'
+            }
+          }
+        }
+      };
+      
+    case 'close':
+      const newState = {...state};
+      
+      return newState;
+      
+    case 'open':
+      const newState = {...state};
+      
+      
+      return newState;
+      
+    case 'split':
+      const newState = {...state};
+      
+      
+      return newState;
+      
+    default:
+      return state;
+  }
+}
+
 const rootReducer = combineReducers({
   files,
   fileStore,
-  openedFiles
+  openedFiles,
+  view
 });
 
 export default rootReducer;

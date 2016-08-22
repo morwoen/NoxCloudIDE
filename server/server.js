@@ -13,10 +13,6 @@ const pty = require('pty.js');
 
 const dmp = new DMP();
 
-// Store reference to the different terminals
-const terms = {};
-const termLogs = {};
-
 // Make logs colourful!
 const consoleLog = console.log;
 const consoleInfo = console.info;
@@ -89,44 +85,6 @@ app.post('/file/*', (req, res) => {
   });
 });
 
-// Terminal
-app.post('/terminals', (req, res) => {
-  var cols = parseInt(req.query.cols, 10);
-  var rows = parseInt(req.query.rows, 10);
-  var term = pty.spawn(process.platform === 'win32' ? 'cmd.exe' : 'bash', [], {
-    name: 'xterm-color',
-    cols: cols || 80,
-    rows: rows || 24,
-    cwd: wd,
-    env: process.env
-  });
-
-  console.log(`Created terminal with PID: ${term.pid}`);
-  terms[term.pid] = term;
-  termLogs[term.pid] = '';
-  term.on('data', (data) => {
-    termLogs[term.pid] += data;
-  });
-  res.send(term.pid.toString());
-});
-
-app.post('/terminals/:pid/size', (req, res) => {
-  var pid = parseInt(req.params.pid, 10);
-  var cols = parseInt(req.query.cols, 10);
-  var rows = parseInt(req.query.rows, 10);
-  var term = terms[pid];
-  
-  if (!pid || !cols || !rows || !term) {
-    console.error(`Failed to resize terminal ${pid} ${cols}:${rows}.${term ? '' : ' Unknown Terminal'}`);
-    return res.end();  
-  }
-
-  term.resize(cols, rows);
-  // console.log(`Resized terminal ${pid} to ${cols}:${rows}.`);
-  res.end();
-});
-
-
 var server = http.createServer(app);
 var iofs = socketio(server, { path: "/fs" });
 var ioterm = socketio(server, { path: "/term" });
@@ -176,23 +134,31 @@ iofs.on('connection', (socket) => {
 });
 
 ioterm.on('connection', (socket) => {
-  const pid = socket.handshake.query.pid;
-
-  const term = terms[parseInt(pid, 10)];
-  if (!term) {
-    socket.disconnect();
-    return;
-  }
+  const term = pty.spawn(process.platform === 'win32' ? 'cmd.exe' : 'bash', [], {
+    name: 'xterm-color',
+    cols: 80,
+    rows: 24,
+    cwd: wd,
+    env: process.env
+  });
   
-  console.log(`Connected to terminal ${term.pid}`);
-  socket.emit('data', termLogs[term.pid]);
+  console.log(`Created terminal with PID: ${term.pid}`);
+  
+  socket.on('resize', (data) => {
+    var cols = parseInt(data.cols, 10);
+    var rows = parseInt(data.rows, 10);
+    
+    if (!cols || !rows) {
+      console.error(`Failed to resize terminal ${term.pid} ${cols}:${rows}.`);
+      return;
+    }
+    
+    term.resize(cols, rows);
+    // console.log(`Resized terminal ${pid} to ${cols}:${rows}.`);
+  });
   
   term.on('data', (data) => {
-    try {
-      socket.emit('data', data);
-    } catch (ex) {
-      // The WebSocket is not open, ignore
-    }
+    socket.emit('data', data);
   });
   
   socket.on('command', (msg) => {
@@ -202,9 +168,6 @@ ioterm.on('connection', (socket) => {
   socket.on('disconnect', () => {
     process.kill(term.pid);
     console.log(`Closed terminal ${term.pid}`);
-
-    delete terms[term.pid];
-    delete termLogs[term.pid];
   });
 });
 

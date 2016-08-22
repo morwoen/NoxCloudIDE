@@ -3,10 +3,10 @@
   "repository": "https://github.com/morwoen/NoxCloudIDE.git",
   "license": "CC-BY-NC-4.0",
   "scripts": {
-    "dev": "webpack-dev-server --history-api-fallback --inline --hot",
-    "watch": "webpack --progress --inline --colors --watch",
+    "dev": "NODE_ENV=dev webpack-dev-server --history-api-fallback --inline --hot",
+    "watch": "NODE_ENV=dev webpack --progress --inline --colors --watch",
     "prod": "NODE_ENV=production webpack",
-    "web": "webpack --progress --inline --colors"
+    "web": "NODE_ENV=dev webpack --progress --inline --colors"
   },
   "dependencies": {
     "client-ajax": "^0.1.6",
