@@ -67,6 +67,13 @@ export default class FileExplorer extends React.Component {
           (err) => console.error(err)
         );
         
+        this.editor.onDidFocusEditor(() => {
+          this.props.dispatch({
+            type: 'touchView',
+            path: this.props.viewPath
+          });
+        });
+        
         // when there is a change save the value
         this.editor.onDidChangeModelContent((e)=> {
           if (this.changedFile) {

@@ -2,9 +2,7 @@ import React from 'react';
 import { Provider } from 'react-redux';
 import Rx from 'rx';
 import Socket from '../socket';
-import SplitPane from 'react-split-pane';
-import FileExplorer from './FileExplorer';
-import Panels from './Panels';
+import IDE from './IDE';
 import utils from '../utils';
 import injectTapEventPlugin from 'react-tap-event-plugin';
 injectTapEventPlugin();
@@ -44,19 +42,19 @@ export default class Root extends React.Component {
     Socket.fs.connect();
     utils.restoreFileExplorer(store.dispatch.bind(store));
     window.addEventListener('resize', () => source.onNext('resize'));
+    store.dispatch({
+      type: 'init'
+    });
   }
   
   componentWillUnmount() {
-    window.localStorage.setItem('openPath', store.getState().files);
+    window.localStorage.setItem('openPath', store.getState().fileExplorer);
   }
   
   render() {
     return (
       <Provider store={store}>
-        <SplitPane split='vertical' minSize={50} defaultSize={200} onChange={() => source.onNext('resize')}>
-          <FileExplorer />
-          <Panels />
-        </SplitPane>
+        <IDE />
       </Provider>
     );
   }

@@ -19,7 +19,7 @@ class File extends React.Component {
           if (this.props.file.isDirectory) {
             if (this.props.file.contents) {
               this.props.dispatch({
-                type: 'close',
+                type: 'closeDir',
                 folder: this.props.path
               });
             } else {
@@ -37,8 +37,11 @@ class File extends React.Component {
               const fileStore = getState().fileStore;
               
               dispatch({
-                type: 'openFile',
-                path: this.props.path
+                type: 'open',
+                view: {
+                  type: 'editor',
+                  path: this.props.path
+                }
               });
               
               if (fileStore[this.props.path]) {
@@ -74,7 +77,7 @@ class File extends React.Component {
 ConnectedFile = connect((state) => {
   return {
     openedFiles: state.openedFiles,
-    files: state.files
+    fileExplorer: state.fileExplorer
   };
 })(File);
 
