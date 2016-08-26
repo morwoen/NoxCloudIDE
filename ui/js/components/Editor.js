@@ -25,15 +25,15 @@ export default class FileExplorer extends React.Component {
   componentWillReceiveProps(newProps) {
     if (this.props.path !== newProps.path) {
       this.loading = true;
-      if (!newProps.fileStore[this.props.path] && (!this.editor || this.editor.getValue()) || newProps.fileStore[this.props.path] && !_.isEmpty(newProps.fileStore[this.props.path].diffs)) {
+      if (!newProps.fileStore.get(this.props.path) && (!this.editor || this.editor.getValue()) || newProps.fileStore.get(this.props.path) && !newProps.fileStore.getIn([this.props.path, 'diffs']).size) {
         alert('not empty file, do you want to save (not implemented lol)');
       }
     }
-    if (this.loading && newProps.fileStore[newProps.path]) {
+    if (this.loading && newProps.fileStore.get(newProps.path)) {
       this.loading = false;
       if (this.editor) {
         this.changedFile = true;
-        this.editor.setValue(newProps.fileStore[newProps.path].original);
+        this.editor.setValue(newProps.fileStore.getIn([newProps.path, 'original']));
       } else {
         console.error('no editor loaded on change');
       }
@@ -52,13 +52,13 @@ export default class FileExplorer extends React.Component {
       if (typeof monaco !== "undefined") {
         if (!this.editor) {
           this.editor = monaco.editor.create(document.getElementById(this.state.id.toString()), {
-            value: this.props.fileStore[this.props.path] ? this.props.fileStore[this.props.path].original : "",
+            value: this.props.fileStore.getIn([this.props.path, 'original']) || "",
             language: 'javascript',
             theme: 'vs-dark',
             wrappingIndent: 'same'
           });
         } else {
-          this.editor.setValue(this.props.fileStore[this.props.path].original);
+          this.editor.setValue(this.props.fileStore.getIn([this.props.path, 'original']));
         }
         
         // Subscribe for resize events
@@ -81,12 +81,12 @@ export default class FileExplorer extends React.Component {
             return;
           }
           
-          const storedFile = this.props.fileStore[this.props.path];
+          const storedFile = this.props.fileStore.get(this.props.path);
           if (!storedFile) {
             return;
           }
           
-          const diffs = this.dmp.diff_main(storedFile.original, this.editor.getValue());
+          const diffs = this.dmp.diff_main(storedFile.get('original'), this.editor.getValue());
           this.dmp.diff_cleanupEfficiency(diffs);
           this.props.dispatch({
             type: 'editFile',
@@ -98,7 +98,7 @@ export default class FileExplorer extends React.Component {
         // keybindings
         this.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, (res) => {
           var currentEditorContent = this.editor.getValue();
-          utils.saveFile(this.props.path, this.props.fileStore[this.props.path].diffs)
+          utils.saveFile(this.props.path, this.props.fileStore.getIn([this.props.path, 'diffs']))
           .then((res) => {
             if (res.status === 200) {
               this.props.dispatch({

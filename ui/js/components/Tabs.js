@@ -8,11 +8,11 @@ import _ from 'lodash';
 export default class TabsView extends React.Component {
   componentWillMount() {
     this.setState({
-      selected: this.props.view.selected || 0
+      selected: this.props.view.get('selected') || 0
     });
     
-    if (this.props.view.type !== 'tabs') {
-      console.error('Invalid view loaded into tabs component', this.props.view);
+    if (this.props.view.get('type') !== 'tabs') {
+      console.error('Invalid view loaded into tabs component', this.props.view.toJS());
     }
   }
   
@@ -30,16 +30,16 @@ export default class TabsView extends React.Component {
         selectedIndex={this.state.selected}
       >
         <TabList>
-          {this.props.view.tabs.map((tab, index) => {
+          {this.props.view.get('tabs').toArray().map((tab, index) => {
             let title = 'Untitled';
-            if (tab.type === 'terminal') {
+            if (tab.get('type') === 'terminal') {
               title = 'Terminal';
-            } else if (tab.type === 'editor') {
-              if (tab.path) {
-                title = _.last(tab.path.split('/'));
+            } else if (tab.get('type') === 'editor') {
+              if (tab.get('path')) {
+                title = _.last(tab.get('path').split('/'));
               } 
             } else {
-              console.error('Unknown tab type', tab);
+              console.error('Unknown tab type', tab.toJS());
             }
             
             return (
@@ -50,14 +50,14 @@ export default class TabsView extends React.Component {
           })}
         </TabList>
 
-        {this.props.view.tabs.map((tab, index) => {
+        {this.props.view.get('tabs').toArray().map((tab, index) => {
           let element = 'Ops, Something went wrong';
-          if (tab.type === 'terminal') {
-            element = <Terminal view={tab} viewPath={`${this.props.viewPath}.${index}`} />;
-          } else if (tab.type === 'editor') {
-            element = <Editor path={tab.path} view={tab} viewPath={`${this.props.viewPath}.${index}`} />;
+          if (tab.get('type') === 'terminal') {
+            element = <Terminal view={tab} viewPath={`${this.props.viewPath}.tabs.${index}`} />;
+          } else if (tab.get('type') === 'editor') {
+            element = <Editor path={tab.get('path')} view={tab} viewPath={`${this.props.viewPath}.tabs.${index}`} />;
           } else {
-            console.error('Unknown tab type', tab);
+            console.error('Unknown tab type', tab.toJS());
           }
           
           return (

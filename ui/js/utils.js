@@ -3,6 +3,7 @@ import _ from 'lodash';
 import ajax from 'client-ajax';
 import path from 'path';
 import DMP from 'diff-match-patch';
+import { Map, List } from 'immutable';
 
 const dmp = new DMP();
 
@@ -50,15 +51,15 @@ const utils = {
   
   updateFileExplorerState: function(state) {
     const openPaths = [];
-    if (state.root.contents) {
+    if (state.get('contents')) {
       const checkFileContents = (f, path) => {
-        if (f.contents) {
-          var openDir = `${path}/${f.filename}`;
+        if (f.get('contents')) {
+          var openDir = `${path}/${f.get('filename')}`;
           openPaths.push(openDir);
-          f.contents.forEach(_.partial(checkFileContents, _, openDir));
+          f.get('contents').forEach(_.partial(checkFileContents, _, openDir));
         }
       };
-      state.root.contents.forEach(_.partial(checkFileContents, _, ''));
+      state.get('contents').forEach(_.partial(checkFileContents, _, ''));
     }
     window.localStorage.setItem('openPath', JSON.stringify(openPaths));
   },
@@ -66,26 +67,34 @@ const utils = {
   setDirectoryContents: function(state, action) {
     const folders = action.folder.split('/');
     folders.shift();
-    const newState = Object.assign({}, state);
     
-    let current = newState.root;
+    let current = state.get('root');
+    let path = ['root'];
     folders.some((folder) => {
       if (!folder) {
         return;
       }
       
-      const next = _.find(current.contents, (file) => {
-        return file.filename === folder && file.isDirectory;
+      const next = _.findIndex(current.get('contents').toArray(), (file) => {
+        return file.get('filename') === folder && file.get('isDirectory');
       });
       
-      current = next;
+      if (!~next) {
+        current = null;
+        return true;
+      }
+      
+      current = current.get('contents').get(next);
+      path.push('contents');
+      path.push(next);
       return !current;
     });
     
     if (current) {
-      current.contents = action.contents;
+      path.push('contents');
+      return state.setIn(path, List((action.contents || []).map(x => Map(x))));
     }
-    return newState;
+    return state;
   },
   
   // FILE MANIPULATION HELPRES
@@ -110,192 +119,155 @@ const utils = {
   
   // VIEW HELPERS
   defaultView: function() {
-    const root = {
+    return Map({
       type: 'horizontal',
-      size: '80%'
-    };
-    
-    root[0] = {
-      type: 'tabs',
-      parent: root
-    };
-    
-    root[0].tabs = [{
-      type: 'editor',
-      path: '',
-      parent: root[0]
-    }];
-    
-    root[1] = {
-      type: 'tabs',
-      parent: 'root'
-    };
-    
-    root[1].tabs = [{
-      type: 'terminal',
-      parent: root[1]
-    }];
-    
-    return root;
+      size: '80%',
+      0: Map({
+        type: 'tabs',
+        tabs: List([
+          Map({
+            type: 'editor',
+            path: ''
+          })
+        ])
+      }),
+      1: Map({
+        type: 'tabs',
+        tabs: List([
+          Map({
+            type: 'terminal'
+          })
+        ])
+      })
+    });
   },
   
   emptyView: function() {
-    const root = {
-      type: 'tabs'
-    };
-    
-    root.tabs = [{
-      type: 'editor',
-      path: '',
-      parent: root
-    }];
-    
-    return root;
+    return Map({
+      type: 'tabs',
+      tabs: List([
+        Map({
+          type: 'editor',
+          path: ''
+        })
+      ])
+    });
   },
   
   closeView: function(state, action) {
-      const newState = {...state};
-      
       const path = action.path.split('.');
-      const tabContainer = utils.getView(newState, path.split(0, path.length - 1).join('.'));
+      const tabContainer = state.getIn(path.split(0, path.length - 2));
       const lastKey = parseInt(_.last(path), 10) || 0;
       
-      if (tabContainer.type !== 'tabs') {
-        console.error('Invalid type of closed view container', tabContainer);
+      if (tabContainer.get('type') !== 'tabs') {
+        console.error('Invalid type of closed view container', tabContainer.toJS());
         return state;
       }
       
-      if (_.size(tabContainer.tabs) < 2) {
-        const parent = tabContainer.parent;
+      if (tabContainer.get('tabs').size < 2) {
+        const parent = state.getIn(path.split(0, path.length - 3));
         if (!parent) {
           return utils.emptyView();
         }
         
-        const myKey = parseInt(path[path.length - 2], 10) || 0;
+        const myKey = parseInt(path[path.length - 3], 10) || 0;
         const otherKey = Math.abs(myKey - 1);
-          
-        if (parent.parent) {
-          const parentKey = parseInt(path[path.length - 3], 10) || 0;
-          parent.parent = {
-            ...parent.parent,
-            [parentKey]: parent[otherKey] 
-          };
-          return newState;
+        
+        const parentParent = state.getIn(path.split(0, path.length - 4));
+        if (parentParent) {
+          const parentKey = parseInt(path[path.length - 4], 10) || 0;
+          return state.setIn(path.split(0, path.length - 4).concat([parentKey]), parent.get(otherKey));
         } else {
-          return parent[otherKey];
+          return parent.get(otherKey);
         }
       } else {
-        tabContainer.tabs = [
-          ...tabContainer.split(0, lastKey),
-          ...tabContainer.split(lastKey + 1)
-        ];
+        return state.setIn(path.slice(0, path.length - 1), List([
+          ...tabContainer.slice(0, lastKey),
+          ...tabContainer.slice(lastKey + 1)
+        ]));
       }
-      
-      return newState;
   },
   
   openView: function(state, action, lastTouched) {
-    const newState = {...state};
-    
-    let component = utils.getView(newState, lastTouched);
+    let usedPath = lastTouched.split('.');
+    usedPath = usedPath.slice(0, usedPath.length - 2);
+    let component = state.getIn(usedPath);
     if (!component) {
-      component = utils.getFirstTabsView(newState);
-      if (!component) {
+      component = utils.getFirstTabsViewPath(state, '');
+      if (!_.isString(component)) {
         console.error('No tabs view found, no last touched view either');
+        return state;
+      }
+      
+      usedPath = component.split('.');
+      component = state.getIn(usedPath);
+    }
+    
+    if (component.get('type') !== 'tabs') {
+      usedPath = usedPath.slice(0, usedPath.length - 1);
+      component = state.getIn(usedPath);
+      if (!component || component.get('type') !== 'tabs') {
+        console.error('Failed to find tabs view');
         return state;
       }
     }
     
-    if (component.type !== 'tabs') {
-      component = component.parent;
-      if (!component || component.type !== 'tabs') {
-        console.error('Failed to find tabs view');
-      }
-    }
+    const index = parseInt(_.last(lastTouched.split('.')), 10) || component.get('tabs').size;
     
-    const index = parseInt(_.last(lastTouched.split('.')), 10) || component.tabs.length;
-    action.view.parent = component;
-    component.tabs = [
-      ...component.tabs.slice(0, index),
-      action.view,
-      ...component.tabs.slice(index + 1)
-    ];
-      
-    return newState;
+    return state.setIn(usedPath.concat(['tabs']), List([
+      ...component.get('tabs').slice(0, index).toArray(),
+      Map(action.view),
+      ...component.get('tabs').slice(index + 1).toArray()
+    ]));
   },
   
   splitView: function(state, action) {
-    const newState = {...state};
-    
     const newKey = action.side;
     const currentKey = Math.abs(newKey - 1);
     const direction = action.direction;
     
-    const currentView = utils.getView(newState, action.path);
-    if (currentView.type !== 'tabs') {
-      console.error('Failed to split view, view is not tabs', currentView);
+    const path = action.path.split('.');
+    const currentView = state.getIn(path);
+    if (currentView.get('type') !== 'tabs') {
+      console.error('Failed to split view, view is not tabs', currentView.toJS());
       return state;
     }
     
-    const newTabsView = {
-      type: 'tabs',
-      tabs: []
-    };
-
-    const container = {
+    const container = Map({
       type: direction,
       [currentKey]: currentView,
-      [newKey]: newTabsView
-    };
+      [newKey]: Map({
+        type: 'tabs',
+        tabs: List()
+      })
+    });
     
-    newTabsView.parent = container;
-    
-    if (currentView.parent) {
-      const path = action.path.split('.');
+    const parentPath = path.slice(0, path.length - 1);
+    const parent = state.getIn(parentPath);
+    if (parent) {
       const parentKey = path[path - 2];
-      
-      currentView.parent[parentKey] = container;
+      return state.setIn(parentPath.concat([parentKey]), container);
     } else {
       return container;
     }
-    
-    currentView.parent = container;
-      
-    return newState;
   },
   
-  getView: function(state, path) {
-    if (!state || !path) {
-      return state;
+  getFirstTabsViewPath: function(state, path) {
+    if (!state || state.get('type') === 'tabs') {
+      return path;
     }
     
-    _.some(path.split('.'), (key) => {
-      if (!state) {
-        return true;
-      }
-      
-      if (state.type === 'tabs') {
-        state = state.tabs[key];
-      } else {
-        state = state[key];
-      }
-    });
-    
-    return state;
-  },
-  
-  getFirstTabsView: function(state) {
-    if (!state || state.type === 'tabs') {
-      return state;
+    if (path) {
+      path += '.';
     }
     
-    if (state[0]) {
-      return utils.getFirstTabsView(state[0]);
-    } else if (state[1]) {
-      return utils.getFirstTabsView(state[1]);
+    if (state.get('0')) {
+      return utils.getFirstTabsViewPath(state.get('0'), `${path}0`);
+    } else if (state.get('1')) {
+      return utils.getFirstTabsViewPath(state.get('1'), `${path}1`);
     }
     
-    return null;
+    return path;
   }
 };
 

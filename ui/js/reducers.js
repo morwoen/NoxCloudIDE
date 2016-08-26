@@ -1,17 +1,16 @@
 import { combineReducers } from "redux";
 import utils from './utils';
+import { Map, List } from 'immutable';
 
-function fileExplorer(state = {}, action) {
+function fileExplorer(state = Map(), action) {
   switch(action.type) {
     case 'root':
-      return {
-        root: action.root
-      };
+      return state.set('root', Map(action.root));
 
     case 'dir':
     case 'closeDir':
       const newState = utils.setDirectoryContents(state, action);
-      utils.updateFileExplorerState(newState);
+      utils.updateFileExplorerState(newState.get('root'));
       return newState;
       
     default:
@@ -19,34 +18,22 @@ function fileExplorer(state = {}, action) {
   }
 }
 
-function fileStore(state = {}, action) {
+function fileStore(state = Map(), action) {
   switch(action.type) {
     case 'loadFile':
-      return {
-        ...state,
-        [action.path]: {
-          original: String(action.file),
-          diffs: []
-        }
-      };
+      return state.set(action.path, Map({
+        original: String(action.file),
+        diffs: List()
+      }));
     
     case 'editFile':
-      return {
-        ...state,
-        [action.path]: {
-          original: state[action.path].original,
-          diffs: action.diffs
-        }
-      };
+      return state.setIn([action.path, 'diffs'], List(action.diffs));
     
     case 'updateFile':
-      return {
-        ...state,
-        [action.path]: {
-          original: action.file,
-          diffs: []
-        }
-      };
+      return state.set(action.path, Map({
+        original: action.file,
+        diffs: List()
+      }));
     
     default:
       return state;
@@ -60,8 +47,8 @@ function fileStore(state = {}, action) {
 // tabs { type: tabs, tabs: [] }
 //
 // tabs would be leaf nodes
-let lastTouched = '0.0';
-function view(state = {}, action) {
+let lastTouched = '0.tabs.0';
+function view(state = Map(), action) {
   switch(action.type) {
     case 'init':
       return utils.defaultView();
@@ -80,20 +67,11 @@ function view(state = {}, action) {
       return state;
       
     case 'viewSize':
-      const resizedView = utils.getView(state, action.path);
-      if (!resizedView) {
-        return state;
-      }
-      resizedView.size = action.size;
-      return state;
+      return state.setIn(action.path.split('.').concat(['size']), action.size);
     
     case 'selectTab':
-      const tabsView = utils.getView(state, action.path);
-      if (!tabsView) {
-        return state;
-      }
-      tabsView.selected = action.selected;
-      return state;
+      // set lastTouch here as well
+      return state.setIn(action.path.split('.').concat(['selected']), action.selected);
       
     default:
       return state;

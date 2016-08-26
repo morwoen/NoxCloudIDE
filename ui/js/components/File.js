@@ -7,17 +7,19 @@ let ConnectedFile;
 
 class File extends React.Component {
   render() {
-    let contents = (this.props.file.contents || []).map((f) => {
-      return (<ConnectedFile key={f.filename} file={f} path={`${this.props.path}/${f.filename}`} dispatch={this.props.dispatch} />);
+    const rawContents = this.props.file.get('contents');
+    let contents = (rawContents && rawContents.toArray() || []).map((f) => {
+      return (<ConnectedFile key={f.get('filename')} file={f} path={`${this.props.path}/${f.get('filename')}`} dispatch={this.props.dispatch} />);
     });
     
+    // TODO: get it from lastTouched
     const color = this.props.path === (this.props.openedFiles && this.props.openedFiles[1]) ? '#0CBA46' : 'white';
     
     return (
       <div>
         <div style={{ color: color, cursor: 'pointer' }} onTouchTap={() => {
-          if (this.props.file.isDirectory) {
-            if (this.props.file.contents) {
+          if (this.props.file.get('isDirectory')) {
+            if (contents.length) {
               this.props.dispatch({
                 type: 'closeDir',
                 folder: this.props.path
@@ -44,7 +46,7 @@ class File extends React.Component {
                 }
               });
               
-              if (fileStore[this.props.path]) {
+              if (fileStore.get(this.props.path)) {
                 // TODO implement refetch & merge / ask for replace if changed
                 
               } else {
@@ -60,11 +62,11 @@ class File extends React.Component {
             });
           }
         }}>
-          {this.props.file.isDirectory ? 
-            <i style={{ paddingRight: 5, fontSize: '0.9em' }} className={this.props.file.contents ? 'fa fa-angle-down fa-fw' : 'fa fa-angle-right fa-fw'} />  
+          {this.props.file.get('isDirectory') ? 
+            <i style={{ paddingRight: 5, fontSize: '0.9em' }} className={!contents.length ? 'fa fa-angle-down fa-fw' : 'fa fa-angle-right fa-fw'} />  
           : <i style={{ paddingLeft: 23 }} />}
-          <i style={{ fontSize: '0.9em' }} className={this.props.file.isDirectory ? 'fa fa-folder' : 'fa fa-code' } />
-          <span style={{ paddingLeft: 5 }}>{this.props.file.filename}</span>
+          <i style={{ fontSize: '0.9em' }} className={this.props.file.get('isDirectory') ? 'fa fa-folder' : 'fa fa-code' } />
+          <span style={{ paddingLeft: 5 }}>{this.props.file.get('filename')}</span>
         </div>
         <div style={{ marginLeft: 20 }}>
           {contents}
@@ -76,8 +78,7 @@ class File extends React.Component {
 
 ConnectedFile = connect((state) => {
   return {
-    openedFiles: state.openedFiles,
-    fileExplorer: state.fileExplorer
+    openedFiles: state.openedFiles
   };
 })(File);
 

@@ -7,28 +7,32 @@ export default class View extends React.Component {
   componentWillMount() {
     this.setState({
       minPaneSize: 100,
-      defaultSize: this.props.view.size || '50%'
+      defaultSize: this.props.view && this.props.view.get('size') || '50%'
     });
   }
   
   componentWillReceiveProps(newProps) {
     this.setState({
-      defaultSize: this.props.view.size || this.state.defaultSize || '50%'
+      defaultSize: this.props.view && this.props.view.get('size') || this.state.defaultSize || '50%'
     });
   }
   
   render() {
-    if (this.props.view.type === 'tabs') {
+    if (!this.props.view) {
+      return <div style={{ width: '100%', height: '100%' }} />;
+    }
+    
+    if (this.props.view.get('type') === 'tabs') {
       return (
         <Tabs view={this.props.view} viewPath={this.props.viewPath} />
       );
-    } else if (this.props.view.type) {
+    } else if (this.props.view.get('type')) {
       const viewPath = this.props.viewPath ? `${this.props.viewPath}.` : '';
       
       return (
         <SplitPane
           style={{ width: '100%', height: '100%' }}
-          split={this.props.view.type}
+          split={this.props.view.get('type')}
           minSize={this.state.minPaneSize}
           maxSize={-this.state.minPaneSize}
           defaultSize={this.state.defaultSize}
@@ -41,8 +45,8 @@ export default class View extends React.Component {
             this.context.resize.notify();
           }}
         >
-          <View view={this.props.view[0]} viewPath={`${viewPath}0`} />
-          <View view={this.props.view[1]} viewPath={`${viewPath}1`} />
+          <View view={this.props.view.get('0')} viewPath={`${viewPath}0`} />
+          <View view={this.props.view.get('1')} viewPath={`${viewPath}1`} />
         </SplitPane>
       );
     } else {
